@@ -1,0 +1,39 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Star Finder GPS Test</title>
+
+<h2>ทดสอบ GPS</h2>
+<p>กดปุ่มด้านล่างเพื่อค้นหาตำแหน่งของคุณ</p>
+<button id="find">ค้นหาตำแหน่งของฉัน</button>
+<pre id="result">รอทดสอบ...</pre>
+
+<script>
+document.getElementById("find").onclick = () => {
+  const out = document.getElementById("result");
+
+  if (!navigator.geolocation) {
+    out.textContent = "เบราว์เซอร์ไม่รองรับ GPS";
+    return;
+  }
+
+  out.textContent = "กำลังค้นหาตำแหน่ง...";
+  navigator.geolocation.getCurrentPosition(
+    p => {
+      out.textContent =
+        "GPS สำเร็จ!\n" +
+        "Latitude: " + p.coords.latitude + "\n" +
+        "Longitude: " + p.coords.longitude + "\n" +
+        "Accuracy: " + p.coords.accuracy + " เมตร";
+    },
+    e => {
+      out.textContent =
+        "GPS Error: " + e.code + "\n" + e.message;
+    },
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+  );
+};
+</script>
+</html>
