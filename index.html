@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#071326"><title>ตำนานดาว | Star Finder</title>
+<style>
+:root{color-scheme:dark;--bg:#071326;--panel:#101f35;--gold:#ffd98a;--muted:#a9bad1}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f3f7ff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+header{padding:17px 18px 10px;background:linear-gradient(180deg,#102746,#071326)}h1{font-size:22px;margin:0}header p{margin:4px 0 0;color:var(--muted);font-size:12px}
+main{max-width:760px;margin:auto;padding:12px}.skywrap{position:relative;border:1px solid #29415f;border-radius:18px;overflow:hidden;background:#030914;min-height:48vh}
+canvas{display:block;width:100%;height:48vh;min-height:330px;touch-action:pan-y}
+.hud{position:absolute;left:12px;right:12px;top:12px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}.pill{background:#071326d9;border:1px solid #4b6380;border-radius:99px;padding:6px 10px;font-size:12px;backdrop-filter:blur(6px)}
+.center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:20px;height:20px;border:1px solid #ffd98a;border-radius:50%;pointer-events:none}.center:after,.center:before{content:"";position:absolute;background:#ffd98a}.center:after{height:1px;width:30px;left:-6px;top:9px}.center:before{width:1px;height:30px;top:-6px;left:9px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.btn{border:1px solid #395575;background:#142944;color:#f3f7ff;border-radius:12px;padding:11px 13px;font-size:14px;cursor:pointer}.btn.primary{background:#e7bd70;color:#142033;border-color:#e7bd70;font-weight:700}.btn:disabled{opacity:.5}
+.panel{background:var(--panel);border:1px solid #253c59;border-radius:16px;padding:14px;margin:10px 0}.panel h2{font-size:16px;margin:0 0 8px}.small{font-size:12px;color:var(--muted);line-height:1.6}.status{font-size:13px;line-height:1.6}.statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#09172a;border-radius:10px;padding:9px}.stat b{display:block;font-size:15px;color:var(--gold)}.stat span{font-size:11px;color:var(--muted)}
+#storyTitle{color:var(--gold);font-size:18px;margin-bottom:5px}.tag{font-size:11px;color:#b6c9e3}.footer{padding:10px 2px 24px;font-size:11px;color:#849ab5}
+label{font-size:12px;color:var(--muted)}select{background:#09172a;color:white;border:1px solid #395575;border-radius:9px;padding:8px;max-width:100%}
+#camera{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none} .camOn #camera{display:block;opacity:.62} .camOn canvas{position:relative;background:transparent}
+@media(min-width:650px){.skywrap canvas{height:55vh}.skywrap{min-height:55vh}}
+</style>
+</head>
+<body>
+<header><h1>✨ ตำนานดาว · Star Finder</h1><p>ท้องฟ้าจำลองบนมือถือ • ใช้ GPS เวลา และเซนเซอร์ของเครื่อง</p></header>
+<main>
+<div class="skywrap" id="skywrap">
+<video id="camera" autoplay playsinline muted></video><canvas id="sky"></canvas>
+<div class="hud"><span class="pill" id="direction">ทิศ —</span><span class="pill" id="time">กำลังอ่านเวลา…</span></div><div class="center"></div>
+</div>
+<div class="controls">
+<button class="btn primary" id="start">เริ่มใช้งาน / ขอสิทธิ์ GPS + เข็มทิศ</button>
+<button class="btn" id="cameraBtn">เปิดกล้อง AR</button>
+<button class="btn" id="reset">รีเซ็ตมุมมอง</button>
+</div>
+<div class="panel"><h2>📍 สถานะอุปกรณ์</h2><div class="status" id="status">กด “เริ่มใช้งาน” และอนุญาต Location / Motion เมื่อเบราว์เซอร์ถาม</div>
+<div class="statgrid" style="margin-top:10px"><div class="stat"><b id="lat">—</b><span>Latitude</span></div><div class="stat"><b id="lon">—</b><span>Longitude</span></div><div class="stat"><b id="alt">—</b><span>มุมเงยกลางจอ</span></div></div>
+<p class="small">ถ้าเซนเซอร์ไม่ทำงาน ให้ลากนิ้วบนท้องฟ้าเพื่อหมุนมุมมองได้ (ต้องเปิดผ่าน HTTPS เพื่อใช้ GPS/กล้องบนโทรศัพท์)</p></div>
+<div class="panel"><h2>🌌 กลุ่มดาวที่อยู่ใกล้กลางจอ</h2><div id="storyTitle">กำลังคำนวณตำแหน่งดาว…</div><div class="tag" id="storySub">ตำแหน่งเป็นค่าประมาณจากแคตตาล็อกดาวสว่าง</div><p id="story" class="status">กลุ่มดาวจะปรากฏเมื่อระบุตำแหน่งและทิศทางได้</p><div class="controls"><button class="btn" id="speak">🔊 อ่านเรื่องเล่า</button><button class="btn" id="stopSpeak">หยุดเสียง</button></div></div>
+<div class="panel"><h2>วิธีใช้</h2><p class="small">1) เปิดหน้านี้ผ่าน HTTPS บนมือถือ 2) กดเริ่มใช้งานและอนุญาตสิทธิ์ 3) ยกมือถือขึ้นฟ้าแล้วหมุนช้า ๆ 4) แตะกลุ่มดาวเพื่อดูชื่อและเรื่องเล่า หากทิศคลาดเคลื่อน ใช้รีเซ็ตแล้วลากจอปรับได้</p></div>
+<div class="footer">รุ่นทดลอง MVP • แผนที่ใช้ดาวสว่างและเส้นกลุ่มดาวตัวอย่าง ไม่ใช่แคตตาล็อกดาวทั้งหมด • Astronomy Engine เป็นไลบรารีโอเพนซอร์สสำหรับคำนวณวัตถุในระบบสุริยะและพิกัดท้องฟ้า</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+<script>
+(() => {
+const canvas=document.getElementById('sky'),ctx=canvas.getContext('2d'),wrap=document.getElementById('skywrap');
+const $=id=>document.getElementById(id);
+let lat=13.7563,lon=100.5018,hasGPS=false,heading=0,pitch=35,roll=0,manualHeading=0,manualPitch=35,usingSensors=false,stream=null,stars=[],centerAlt=35,centerAz=0;
+const rad=Math.PI/180,deg=180/Math.PI;
+const catalog=[
+{name:'Sirius',th:'ซิริอุส',ra:6.7525,dec:-16.716,mag:-1.46,con:'Canis Major'},
+{name:'Betelgeuse',th:'บีเทลจุส',ra:5.9195,dec:7.407,mag:.42,con:'Orion'},
+{name:'Rigel',th:'ไรเจล',ra:5.2423,dec:-8.202,mag:.13,con:'Orion'},
+{name:'Bellatrix',th:'เบลลาทริกซ์',ra:5.4189,dec:6.35,mag:1.64,con:'Orion'},
+{name:'Saiph',th:'ไซฟ์',ra:5.7959,dec:-9.67,mag:2.07,con:'Orion'},
+{name:'Alnitak',th:'อัลนีแทก',ra:5.6793,dec:-1.943,mag:1.74,con:'Orion'},
+{name:'Alnilam',th:'อัลนีลัม',ra:5.6036,dec:-1.202,mag:1.69,con:'Orion'},
+{name:'Mintaka',th:'มินทากา',ra:5.5334,dec:-0.299,mag:2.23,con:'Orion'},
+{name:'Aldebaran',th:'อัลเดบารัน',ra:4.5987,dec:16.509,mag:.85,con:'Taurus'},
+{name:'Capella',th:'คาเพลลา',ra:5.2782,dec:45.998,mag:.08,con:'Auriga'},
+{name:'Procyon',th:'โพรไซออน',ra:7.655,dec:5.225,mag:.34,con:'Canis Minor'},
+{name:'Pollux',th:'พอลลักซ์',ra:7.7553,dec:28.026,mag:1.14,con:'Gemini'},
+{name:'Castor',th:'แคสเตอร์',ra:7.5767,dec:31.888,mag:1.58,con:'Gemini'},
+{name:'Regulus',th:'เรกูลัส',ra:10.1395,dec:11.967,mag:1.35,con:'Leo'},
+{name:'Spica',th:'สไปกา',ra:13.4199,dec:-11.161,mag:.97,con:'Virgo'},
+{name:'Arcturus',th:'อาร์คทูรัส',ra:14.261,dec:19.182,mag:-.05,con:'Boötes'},
+{name:'Vega',th:'เวกา',ra:18.6156,dec:38.784,mag:.03,con:'Lyra'},
+{name:'Deneb',th:'เดเนบ',ra:20.6905,dec:45.28,mag:1.25,con:'Cygnus'},
+{name:'Altair',th:'อัลแทร์',ra:19.8464,dec:8.868,mag:.77,con:'Aquila'},
+{name:'Antares',th:'แอนทาเรส',ra:16.4901,dec:-26.432,mag:1.06,con:'Scorpius'},
+{name:'Fomalhaut',th:'โฟมาลฮอต',ra:22.9608,dec:-29.622,mag:1.16,con:'Piscis Austrinus'},
+{name:'Achernar',th:'อเคอร์นาร์',ra:1.6286,dec:-57.237,mag:.46,con:'Eridanus'},
+{name:'Canopus',th:'คาโนปัส',ra:6.3992,dec:-52.696,mag:-.74,con:'Carina'},
+{name:'Polaris',th:'ดาวเหนือ',ra:2.5303,dec:89.264,mag:1.98,con:'Ursa Minor'}
+];
+const lines=[
+[['Betelgeuse','Bellatrix'],['Bellatrix','Mintaka'],['Mintaka','Alnilam'],['Alnilam','Alnitak'],['Alnitak','Saiph'],['Saiph','Rigel'],['Rigel','Mintaka'],['Betelgeuse','Alnilam']],
+[['Castor','Pollux']], [['Vega','Deneb'],['Deneb','Altair'],['Altair','Vega']]
+];
+const lore={
+'Orion':'นายพราน Orion เป็นกลุ่มดาวที่สังเกตง่ายจากดาวสามดวงเรียงกันเป็นเข็มขัด ตามตำนานกรีก Orion เป็นนายพรานผู้ยิ่งใหญ่ เรื่องเล่ามีหลายฉบับ และกลุ่มดาวนี้เห็นเด่นในท้องฟ้าช่วงฤดูหนาวของซีกโลกเหนือ',
+'Canis Major':'Canis Major หรือสุนัขใหญ่ มีดาวซิริอุสซึ่งเป็นดาวฤกษ์ที่สว่างที่สุดบนท้องฟ้ายามค่ำคืนเมื่อมองจากโลก ในตำนานกรีกมักเชื่อมโยงกับสุนัขคู่ใจของนายพราน Orion',
+'Taurus':'Taurus หรือวัว เป็นกลุ่มดาวจักรราศี ในตำนานกรีกมักเชื่อมโยงกับ Zeus ที่แปลงกายเป็นวัวสีขาว',
+'Gemini':'Gemini หรือคนคู่ เชื่อมโยงกับฝาแฝด Castor และ Pollux ในเทพปกรณัมกรีก เป็นสัญลักษณ์ของสายสัมพันธ์ระหว่างพี่น้อง',
+'Leo':'Leo หรือสิงโต เป็นหนึ่งในกลุ่มดาวจักรราศี มักเชื่อมโยงกับสิงโตนีเมียนในตำนานวีรกรรมสิบสองประการของ Heracles',
+'Scorpius':'Scorpius หรือแมงป่อง ในตำนานกรีกมักเล่าว่าแมงป่องถูกส่งไปต่อกรกับนายพราน Orion จึงปรากฏอยู่คนละฟากของท้องฟ้าในช่วงเวลาต่างกัน',
+'Lyra':'Lyra หรือพิณ เชื่อมโยงกับพิณของ Orpheus นักดนตรีในตำนานกรีก ผู้มีเสียงเพลงสะกดใจผู้คนและธรรมชาติ',
+'Cygnus':'Cygnus หรือหงส์ เป็นกลุ่มดาวเด่นตามแนวทางช้างเผือก มีรูปคล้ายกางเขนเหนือฟ้า และมีเรื่องเล่าหลายสำนวนในตำนานกรีก'
+};
+function siderealHours(date,longitude){const jd=date.getTime()/86400000+2440587.5;const d=jd-2451545;let gmst=18.697374558+24.06570982441908*d;return ((gmst+longitude/15)%24+24)%24}
+function horizontal(s,date){const H=(siderealHours(date,lon)-s.ra)*15*rad, d=s.dec*rad, p=lat*rad;const alt=Math.asin(Math.sin(p)*Math.sin(d)+Math.cos(p)*Math.cos(d)*Math.cos(H));const az=Math.atan2(-Math.sin(H)*Math.cos(d),Math.sin(d)*Math.cos(p)-Math.cos(d)*Math.sin(p)*Math.cos(H));return {alt:alt*deg,az:(az*deg+360)%360}}
+function resize(){const r=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);draw()}
+function project(az,alt,w,h){let da=((az-centerAz+540)%360)-180, de=alt-centerAlt;const f=w/(2*Math.tan(42*rad));return {x:w/2+Math.tan(da*rad)*f,y:h/2-Math.tan(de*rad)*f,visible:Math.abs(da)<62&&Math.abs(de)<48&&alt>-5}}
+function draw(){
+ const w=canvas.clientWidth||360,h=canvas.clientHeight||380;ctx.clearRect(0,0,w,h);
+ const cameraMode=wrap.classList.contains('camOn');
+ if(!cameraMode){const grad=ctx.createLinearGradient(0,0,0,h);grad.addColorStop(0,'#07152d');grad.addColorStop(.6,'#0b1e38');grad.addColorStop(1,'#14243a');ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);
+ // background stars
+ for(let i=0;i<150;i++){let x=(i*97.13%w),y=(i*61.71%h);ctx.globalAlpha=.18+(i%7)/12;ctx.fillStyle='#dceaff';ctx.beginPath();ctx.arc(x,y,(i%3)*.25+.35,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
+ }
+ const now=new Date(),coords=catalog.map(s=>({...s,...horizontal(s,now)}));
+ const byName=Object.fromEntries(coords.map(s=>[s.name,s]));
+ // constellation links
+ ctx.strokeStyle='rgba(105,190,255,.52)';ctx.lineWidth=1.2;
+ for(const group of lines)for(const pair of group){const a=byName[pair[0]],b=byName[pair[1]];if(!a||!b)continue;const pa=project(a.az,a.alt,w,h),pb=project(b.az,b.alt,w,h);if(pa.visible&&pb.visible){ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke()}}
+ let visible=[];
+ for(const s of coords){const p=project(s.az,s.alt,w,h);if(!p.visible)continue;visible.push({...s,...p});const r=Math.max(1.2,4.3-s.mag*1.0);ctx.shadowBlur=s.mag<1?12:4;ctx.shadowColor='#b8dcff';ctx.fillStyle=s.mag<0.5?'#fff1bd':'#e2efff';ctx.beginPath();ctx.arc(p.x,p.y,r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+ if(s.mag<1.3){ctx.font='12px system-ui';ctx.fillStyle='#fff0c9';ctx.fillText(s.th,p.x+7,p.y-7)}}
+ canvas._visible=visible;
+ // horizon and compass
+ ctx.strokeStyle='rgba(255,255,255,.13)';ctx.setLineDash([4,6]);ctx.beginPath();ctx.moveTo(0,h*.78);ctx.lineTo(w,h*.78);ctx.stroke();ctx.setLineDash([]);
+ ctx.font='11px system-ui';ctx.fillStyle='#a9bad1';ctx.fillText('N',w/2-3,18);ctx.fillText('มุมมองท้องฟ้า • ลากนิ้วเพื่อหมุน',12,h-12);
+ $('time').textContent=now.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+ $('direction').textContent=`ทิศ ${compassName(centerAz)} ${Math.round(centerAz)}°`;
+ $('alt').textContent=`${Math.round(centerAlt)}°`;
+ updateNearest(visible);
+}
+function compassName(a){return ['เหนือ','ตะวันออกเฉียงเหนือ','ตะวันออก','ตะวันออกเฉียงใต้','ใต้','ตะวันตกเฉียงใต้','ตะวันตก','ตะวันตกเฉียงเหนือ'][Math.round(a/45)%8]}
+function updateNearest(vis){if(!vis.length){$('storyTitle').textContent='ยังไม่พบดาวสว่างใกล้กลางจอ';$('story').textContent='ลองหมุนโทรศัพท์หรือปรับมุมมอง';return}
+ const s=vis.sort((a,b)=>Math.hypot(a.x-canvas.clientWidth/2,a.y-canvas.clientHeight/2)-Math.hypot(b.x-canvas.clientWidth/2,b.y-canvas.clientHeight/2))[0];
+ $('storyTitle').textContent=`${s.con} · ${s.th} (${s.name})`; $('storySub').textContent=`Azimuth ${s.az.toFixed(1)}° • Altitude ${s.alt.toFixed(1)}° • ความสว่างปรากฏ ${s.mag}`;
+ $('story').textContent=lore[s.con]||`ดาว ${s.name} อยู่ในกลุ่มดาว ${s.con} พิกัดบนท้องฟ้าเปลี่ยนไปตามเวลาและตำแหน่งของผู้สังเกตการณ์ รุ่นทดลองนี้แสดงข้อมูลดาวสว่างเพื่อช่วยเรียนรู้ท้องฟ้า`;
+}
+function setStatus(t){$('status').textContent=t}
+async function start(){
+ const msgs=[];
+ try{
+ if(navigator.geolocation){await new Promise(resolve=>navigator.geolocation.getCurrentPosition(p=>{lat=p.coords.latitude;lon=p.coords.longitude;hasGPS=true;$('lat').textContent=lat.toFixed(4);$('lon').textContent=lon.toFixed(4);msgs.push('GPS พร้อม');resolve()},e=>{msgs.push('ใช้ตำแหน่งตัวอย่างกรุงเทพฯ (GPS ไม่ได้รับอนุญาต)');resolve()},{enableHighAccuracy:true,timeout:10000,maximumAge:60000}))}
+ else msgs.push('เบราว์เซอร์ไม่รองรับ GPS');
+ if(typeof DeviceOrientationEvent!=='undefined'){
+ if(typeof DeviceOrientationEvent.requestPermission==='function'){try{const p=await DeviceOrientationEvent.requestPermission();if(p==='granted')window.addEventListener('deviceorientation',orientation,true);else msgs.push('ไม่ได้รับสิทธิ์ motion')}catch(e){msgs.push('ขอสิทธิ์ motion ไม่สำเร็จ')}}
+ else {window.addEventListener('deviceorientationabsolute',orientation,true);window.addEventListener('deviceorientation',orientation,true);msgs.push('เปิดรับเซนเซอร์แล้ว')}
+ }else msgs.push('ไม่พบเซนเซอร์ทิศทาง');
+ usingSensors=true;setStatus(msgs.join(' • ')+' • หากทิศไม่ตรง ให้ลากจอปรับมุมมอง');draw();
+ }catch(e){setStatus('เริ่มต้นไม่สำเร็จ: '+e.message)}
+}
+function orientation(e){
+ let h=null;
+ if(typeof e.webkitCompassHeading==='number')h=e.webkitCompassHeading;
+ else if(typeof e.alpha==='number')h=(360-e.alpha)%360;
+ if(h!==null&&!Number.isNaN(h)){centerAz=(h+manualHeading+360)%360;heading=h}
+ if(typeof e.beta==='number'){centerAlt=Math.max(-10,Math.min(90,90-Math.abs(e.beta-90))); // fallback estimate for portrait tilt
+   if(Math.abs(e.beta)<90)centerAlt=Math.max(-10,Math.min(90,90-e.beta));
+ }
+ draw();
+}
+$('start').addEventListener('click',start);
+$('reset').addEventListener('click',()=>{centerAz=0;centerAlt=35;manualHeading=0;manualPitch=35;draw()});
+let drag=null;
+canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,az:centerAz,alt:centerAlt};canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(!drag)return;centerAz=(drag.az-(e.clientX-drag.x)*.55+360)%360;centerAlt=Math.max(-10,Math.min(90,drag.alt+(e.clientY-drag.y)*.35));draw()});
+canvas.addEventListener('pointerup',e=>{if(drag){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.hypot(dx,dy)<8){const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;const s=(canvas._visible||[]).find(s=>Math.hypot(s.x-x,s.y-y)<20);if(s){$('storyTitle').textContent=`${s.con} · ${s.th} (${s.name})`;$('storySub').textContent=`Azimuth ${s.az.toFixed(1)}° • Altitude ${s.alt.toFixed(1)}°`;$('story').textContent=lore[s.con]||`ดาว ${s.name} เป็นดาวสว่างในกลุ่มดาว ${s.con}`}}drag=null});
+$('speak').addEventListener('click',()=>{if(!('speechSynthesis'in window)){setStatus('เบราว์เซอร์นี้ไม่รองรับการอ่านออกเสียง');return}speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance($('storyTitle').textContent+'. '+$('story').textContent))});
+$('stopSpeak').addEventListener('click',()=>speechSynthesis?.cancel());
+$('cameraBtn').addEventListener('click',async()=>{try{if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;$('camera').srcObject=null;wrap.classList.remove('camOn');$('cameraBtn').textContent='เปิดกล้อง AR';return}stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});$('camera').srcObject=stream;wrap.classList.add('camOn');$('cameraBtn').textContent='ปิดกล้อง AR';setStatus('กล้องเปิดแล้ว • อนุญาตกล้องเฉพาะเมื่อกดปุ่มนี้');}catch(e){setStatus('เปิดกล้องไม่ได้: '+e.message+' • ต้องเปิดผ่าน HTTPS และอนุญาตกล้อง')}});
+window.addEventListener('resize',resize);resize();draw();
+if(window.Astronomy){console.info('Astronomy Engine loaded:',typeof Astronomy.Observer, '— ready for solar-system object layer');}
+})();
+</script>
+</body></html>
